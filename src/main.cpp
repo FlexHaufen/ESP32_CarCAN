@@ -14,8 +14,16 @@
 #include <Arduino.h>
 
 #include <SPI.h>
+#include <CAN.h>
+#include <SoftwareSerial.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
+
+// internal
+//#include "CAN/CanHacker.h"
+//#include "CAN/CanHackerLineReader.h"
+
+
 
 // ** DEFINES ***
 // SPI
@@ -27,7 +35,14 @@
 #define SPI_RST  22
 
 // *** GLOABL VARIABLES ***
-Adafruit_ILI9341 display = Adafruit_ILI9341(SPI_CS, SPI_DC, SPI_MOSI, SPI_SCK, SPI_RST, SPI_MISO);
+//CanHackerLineReader *lineReader = NULL;
+//CanHacker *canHacker = NULL;
+
+// Using Serial for USB communication
+SoftwareSerial SerialUSB; // or HardwareSerial SerialUSB(2);
+
+
+void readMessage(void);
 
 
 /**
@@ -35,18 +50,20 @@ Adafruit_ILI9341 display = Adafruit_ILI9341(SPI_CS, SPI_DC, SPI_MOSI, SPI_SCK, S
  * 
  */
 void setup() {
-    Serial.begin(9600);
+    Serial.begin(115200);
+    SerialUSB.begin(115200);
     
-    display.begin();
-    display.fillScreen(ILI9341_BLACK);
+    //Stream *interfaceStream = &Serial;
+    //Stream *debugStream = &softwareSerial;
+    //
+    //
+    //canHacker = new CanHacker(interfaceStream, debugStream, SPI_CS_PIN);
+    ////canHacker->enableLoopback(); // uncomment this for loopback
+    //lineReader = new CanHackerLineReader(canHacker);
 
-    // read diagnostics (optional but can help debug problems)
-    Serial.println("ILI9341 Debug Indormation"); 
-    Serial.print(" - Display Power Mode: 0x"); Serial.println( display.readcommand8(ILI9341_RDMODE), HEX);
-    Serial.print(" - MADCTL Mode: 0x"); Serial.println(display.readcommand8(ILI9341_RDMADCTL), HEX);
-    Serial.print(" - Pixel Format: 0x"); Serial.println(display.readcommand8(ILI9341_RDPIXFMT), HEX);
-    Serial.print(" - Image Format: 0x"); Serial.println(display.readcommand8(ILI9341_RDIMGFMT), HEX);
-    Serial.print(" - Self Diagnostic: 0x"); Serial.println(display.readcommand8(ILI9341_RDSELFDIAG), HEX); 
+    CAN.setPins(4, 2);
+    CAN.begin(500000);
+
 }
 
 /**
@@ -54,27 +71,48 @@ void setup() {
  * 
  */
 void loop() {
-    display.fillScreen(ILI9341_BLACK);
-    display.setCursor(0, 0);
-    display.setTextColor(ILI9341_WHITE);  display.setTextSize(1);
-    display.println("Hello World!");
-    display.setTextColor(ILI9341_YELLOW); display.setTextSize(2);
-    display.println(1234.56);
-    display.setTextColor(ILI9341_RED);    display.setTextSize(3);
-    display.println(0xDEADBEEF, HEX);
-    display.println();
-    display.setTextColor(ILI9341_GREEN);
-    display.setTextSize(5);
-    display.println("Groop");
-    display.setTextSize(2);
-    display.println("I implore thee,");
-    display.setTextSize(1);
-    display.println("my foonting turlingdromes.");
-    display.println("And hooptiously drangle me");
-    display.println("with crinkly bindlewurdles,");
-    display.println("Or I will rend thee");
-    display.println("in the gobberwarts");
-    display.println("with my blurglecruncheon,");
-    display.println("see if I don't!");
-    delay(1000);
+
+    // Check if CAN data is available to read
+    if (CAN.parsePacket()) {
+        // If data is available, print it to serial
+        while (CAN.available()) {
+            Serial.print("t");
+            Serial.print(CAN.packetId(), HEX);
+            for (int i = 0; i < CAN.packetDlc(); i++) {
+                Serial.print(CAN.read(), HEX);
+                Serial.print(" ");
+            }
+            Serial.println();
+        }
+    }
 }
+
+/*
+// Create a function to read message and display it through Serial Monitor
+void readMessage() {
+  unsigned long can_ID; // assign a variable for Message ID
+  byte can_length; //assign a variable for length
+  byte can_data[8] = {0}; //assign an array for data
+
+  if (CAN.available() == true) // Check to see if a valid message has been received.
+  {
+    CAN.read(&can_ID, &can_length, can_data); // read Message and assign data through reference operator &
+
+    Serial.print(millis());
+    Serial.print(F(",0x"));
+    Serial.print(can_ID, HEX); // Displays received ID
+    Serial.print(',');
+    Serial.print(can_length, HEX); // Displays message length
+    for (byte i = 0; i < can_length; i++)
+    {
+      Serial.print(',');
+      if (can_data[i] < 0x10) // If the data is less than 10 hex it will assign a zero to the front as leading zeros are ignored...
+      {
+        Serial.print('0');
+      }
+      Serial.print(can_data[i], HEX); // Displays message data
+    }
+    Serial.println(); // adds a line
+  }
+}
+*/
