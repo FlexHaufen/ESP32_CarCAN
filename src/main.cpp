@@ -12,107 +12,86 @@
 // *** INCLUDES ***
 // external
 #include <Arduino.h>
-
-#include <SPI.h>
-#include <CAN.h>
-#include <SoftwareSerial.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
-
-// internal
-//#include "CAN/CanHacker.h"
-//#include "CAN/CanHackerLineReader.h"
+#include <esp32_can.h>
 
 
+CAN_FRAME can_message;
+#define SERIAL_MAX_BUFF_LEN   30
 
-// ** DEFINES ***
-// SPI
-#define SPI_MOSI 23
-#define SPI_MISO 19
-#define SPI_SCK  18
-#define SPI_CS   5
-#define SPI_DC   21
-#define SPI_RST  22
+typedef struct esp_frame_t {
+  int mesh_id;
+  unsigned long can_id;
+  byte can_len;
+  uint8_t can_data[8];
+};
 
-// *** GLOABL VARIABLES ***
-//CanHackerLineReader *lineReader = NULL;
-//CanHacker *canHacker = NULL;
-
-// Using Serial for USB communication
-SoftwareSerial SerialUSB; // or HardwareSerial SerialUSB(2);
-
-
-void readMessage(void);
+bool          send_can_msgs = true;
+bool          send_timestamp = true;
+bool          got_new_can_msg = false;
+bool          send_OK = true;
+uint8_t       buff[40];
+char          slcan_com[SERIAL_MAX_BUFF_LEN];
+esp_frame_t   esp_frame;
 
 
-/**
- * @brief Setup
- * 
- */
+void sendCanOverSerial();
+void handleSerial();
+void send_ack();
+void send_nack();
+uint16_t  slcan_get_time();
+
 void setup() {
+
     Serial.begin(115200);
-    SerialUSB.begin(115200);
-    
-    //Stream *interfaceStream = &Serial;
-    //Stream *debugStream = &softwareSerial;
-    //
-    //
-    //canHacker = new CanHacker(interfaceStream, debugStream, SPI_CS_PIN);
-    ////canHacker->enableLoopback(); // uncomment this for loopback
-    //lineReader = new CanHackerLineReader(canHacker);
+    Serial.setTimeout(1);
 
-    CAN.setPins(4, 2);
-    CAN.begin(500000);
-
+    CAN0.setCANPins(GPIO_NUM_5, GPIO_NUM_4);
+    CAN0.setListenOnlyMode(true);
+    if (!CAN0.begin(500000)) {
+        ESP.restart();
+    }
+    CAN0.watchFor();  
 }
 
-/**
- * @brief Loop
- * 
- */
 void loop() {
-
-    // Check if CAN data is available to read
-    if (CAN.parsePacket()) {
-        // If data is available, print it to serial
-        while (CAN.available()) {
-            Serial.print("t");
-            Serial.print(CAN.packetId(), HEX);
-            for (int i = 0; i < CAN.packetDlc(); i++) {
-                Serial.print(CAN.read(), HEX);
-                Serial.print(" ");
-            }
-            Serial.println();
+    
+    if (CAN0.read(can_message)) {
+        if (can_message.id == 0)  {
+            return;
         }
+        esp_frame.can_id = can_message.id;
+        esp_frame.can_len = can_message.length;
+        for (int i = 0; i < can_message.length; i++) {
+            esp_frame.can_data[i] = can_message.data.byte[i];
+        }
+        got_new_can_msg = true;
+    }
+    sendCanOverSerial();
+}
+
+void sendCanOverSerial() {
+
+    if (got_new_can_msg ) {
+        char outputBuff[45]; // Increased size for safety
+        int idx = 0;
+
+        idx += snprintf(outputBuff + idx, sizeof(outputBuff) - idx, "t%03x", esp_frame.can_id);
+        idx += snprintf(outputBuff + idx, sizeof(outputBuff) - idx, "%d", esp_frame.can_len);
+        for (int i = 0; i < esp_frame.can_len; i++) {
+            idx += snprintf(outputBuff + idx, sizeof(outputBuff) - idx, "%02x", esp_frame.can_data[i]);
+        }
+
+        if (send_timestamp) {
+            uint16_t timestamp = slcan_get_time();
+            idx += snprintf(outputBuff + idx, sizeof(outputBuff) - idx, "%04x", timestamp);
+        }
+        outputBuff[idx++] = '\r';     // Carriage return
+        outputBuff[idx++] = '\0';    // Null-terminate the buffer
+        Serial.print(outputBuff);
+        got_new_can_msg = false;
     }
 }
 
-/*
-// Create a function to read message and display it through Serial Monitor
-void readMessage() {
-  unsigned long can_ID; // assign a variable for Message ID
-  byte can_length; //assign a variable for length
-  byte can_data[8] = {0}; //assign an array for data
-
-  if (CAN.available() == true) // Check to see if a valid message has been received.
-  {
-    CAN.read(&can_ID, &can_length, can_data); // read Message and assign data through reference operator &
-
-    Serial.print(millis());
-    Serial.print(F(",0x"));
-    Serial.print(can_ID, HEX); // Displays received ID
-    Serial.print(',');
-    Serial.print(can_length, HEX); // Displays message length
-    for (byte i = 0; i < can_length; i++)
-    {
-      Serial.print(',');
-      if (can_data[i] < 0x10) // If the data is less than 10 hex it will assign a zero to the front as leading zeros are ignored...
-      {
-        Serial.print('0');
-      }
-      Serial.print(can_data[i], HEX); // Displays message data
-    }
-    Serial.println(); // adds a line
-  }
+uint16_t  slcan_get_time() {
+    return millis() % 0xEA60;   // Timespamp limit
 }
-*/
