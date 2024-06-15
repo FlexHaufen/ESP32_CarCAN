@@ -22,6 +22,9 @@
 #define CAN_PIN_RX  GPIO_NUM_5      // Rx pin for TJA1051T/3
 #define CAN_PIN_TX  GPIO_NUM_4      // Tx pin for TJA1051T/3
 
+#define CAN_TIMER_TX_PERIOD         200 // [ms]
+#define CAN_TIMER_RX_PERIOD          10 // [ms]
+#define CAN_MAX_TIMEOUT            1000
 
 // OBD2-PID's & CAN-ID's according to https://en.wikipedia.org/wiki/OBD-II_PIDs
 #define OBD2_CAN_TX_ID                  0x7DF       // CAN ID for OBD2 Tx
@@ -37,11 +40,20 @@
 
 
 // *** GLOBAL VARIABLES ***
-static std::map<uint16_t, int16_t> g_OBD2Data {
-    {OBD2_PID_ENGINE_LOAD,      0},
-    {OBD2_PID_ENGINE_TEMP,      0},
-    {OBD2_PID_INTAKE_TEMP,      0},
-    {OBD2_PID_THROTTLE_POS,     0}
+
+
+typedef struct {
+    int16_t data;           // OBD2 Data
+
+    uint8_t txFlag;         // 1: if data was sent 0: if data was recived
+    uint8_t timeOutCnt;     // TimeOut cnt
+} obd2Data_t;
+
+static std::map<uint16_t, obd2Data_t> g_OBD2Data {
+    {OBD2_PID_ENGINE_LOAD,      {0, 0}},
+    {OBD2_PID_ENGINE_TEMP,      {0, 0}},
+    {OBD2_PID_INTAKE_TEMP,      {0, 0}},
+    {OBD2_PID_THROTTLE_POS,     {0, 0}}
 };
 
 
