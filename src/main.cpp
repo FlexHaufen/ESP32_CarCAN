@@ -14,8 +14,7 @@
 #include <Arduino.h>
 
 // internal
-#include "CanHandler.h"
-
+#include "CanHandler/CanHandler.h"
 
 
 void setup() {

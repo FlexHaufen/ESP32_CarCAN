@@ -1,12 +1,15 @@
 # ESP32_CarCAN
-ESP32 CAN-Bus sniffer for a Car to display information on a LCD-Display
+ESP32 CAN-Bus Sniffer for Car Data Display on an LCD Screen
 
-## Discription
-The ESP32 communicates over the Adafruit CAN-Bus transiver with the CAR.
-The data is requestet using the OBD-II Standart.
+The ESP32 communicates with the car via the Adafruit CAN-Bus transceiver.  
+Data is requested using the OBD-II standard and displayed on an LCD screen.
 
+## Hardware
+- ESP32 NODEMCU-32S
+- Adafruit TJA1051T/3
+- Adafruit ILI9341
 
-
-
-ESP32 TWAI can be used with arduino CAN.h
-https://www.youtube.com/watch?v=JZSCzRT9TTo
+## Sources 
+- [OBD-II PIDs](https://en.wikipedia.org/wiki/OBD-II_PIDs)
+- [MrDIY - Car's CAN](https://www.youtube.com/watch?v=Se2KCVyD7CM)
+- [Electronoobs - CAN Bus](https://www.youtube.com/watch?v=JZSCzRT9TTo)

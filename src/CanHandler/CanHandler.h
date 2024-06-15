@@ -1,7 +1,7 @@
 /**
  * @file CanHandler.h
  * @author flexhaufen
- * @brief 
+ * @brief   This file handles the can communication
  * @version 0.1
  * @date 2024-06-14
  * 
@@ -15,12 +15,19 @@
 #include <Arduino.h>
 #include <Ticker.h>
 #include <esp32_can.h>
+#include <map>
 
 // *** DEFINES ***
 
+#define CAN_PIN_RX  GPIO_NUM_5      // Rx pin for TJA1051T/3
+#define CAN_PIN_TX  GPIO_NUM_4      // Tx pin for TJA1051T/3
+
+
 // OBD2-PID's & CAN-ID's according to https://en.wikipedia.org/wiki/OBD-II_PIDs
-#define OBD2_CAN_TX_ID                  0x7DF
-#define OBD2_CAN_RX_ID_ECU              0x7E8
+#define OBD2_CAN_TX_ID                  0x7DF       // CAN ID for OBD2 Tx
+#define OND2_CAN_TX_SERVICE_01          0x01        
+
+#define OBD2_CAN_RX_ID_ECU              0x7E8       // CAN ID for OBD2 Rx of ECU
 
 #define OBD2_PID_FULE_SYSTEM_STATE      0x03
 #define OBD2_PID_ENGINE_LOAD            0x04        // (100/255)A
@@ -28,6 +35,14 @@
 #define OBD2_PID_INTAKE_TEMP            0x0F        // A - 40
 #define OBD2_PID_THROTTLE_POS           0x11        // (100/255)A
 
+
+// *** GLOBAL VARIABLES ***
+static std::map<uint16_t, int16_t> g_OBD2Data {
+    {OBD2_PID_ENGINE_LOAD,      0},
+    {OBD2_PID_ENGINE_TEMP,      0},
+    {OBD2_PID_INTAKE_TEMP,      0},
+    {OBD2_PID_THROTTLE_POS,     0}
+};
 
 
 /**
@@ -37,6 +52,8 @@
  */
 void CanHandlerInit();
 
-void CanHandlerUpdate();
-
+/**
+ * @brief Prints all the data in g_OBD2Data
+ * 
+ */
 void PrintData();
