@@ -39,21 +39,18 @@
 #define OBD2_PID_INTAKE_TEMP            0x0F        // A - 40                           [°C]
 #define OBD2_PID_THROTTLE_POS           0x11        // (100/255)A                       [%]
 #define OBD2_PID_SPEED                  0x0D        // A                                [km/h]
-#define OBD2_PID_DISTANCE_SINCE_CLR     0x31        // (256A + B)                    [km]
+#define OBD2_PID_DISTANCE_SINCE_CLR     0x31        // (256A + B)                       [km]
+#define OBD2_PID_ECU_VOLTAGE            0x42        // (256A + B) / 1000
 #define OBD2_PID_ODOMETER               0xA6        // (A(2^24)+B(2^16)+C(2^8)+D)/10    [km]
 
 // *** GLOBAL VARIABLES ***
 
 
 typedef struct {
-    int32_t data;           // OBD2 Data
-    int32_t oldData;        // OBD2 old Data
-
-    uint8_t txFlag;         // 1: if data was sent 0: if data was recived
+    float data;             // OBD2 Data
+    float oldData;          // OBD2 old Data
     uint8_t timeOutCnt;     // TimeOut cnt
-
     void UpdateOldData() { oldData = data; }
-
 } obd2Data_t;
 
 
@@ -76,3 +73,6 @@ void PrintData();
  * @return std::map<uint16_t, obd2Data_t>& 
  */
 std::map<uint16_t, obd2Data_t>& GetOBD2Data();
+
+
+bool CanHandlerIsConnected();

@@ -19,6 +19,7 @@
 
 // internal
 #include "CanHandler/CanHandler.h"
+#include "bitMaps.h"
 
 // ** DEFINES ***
 // SPI
@@ -56,18 +57,27 @@ public:
         m_Display.begin();
 
         DrawBackground();
-        //CanHandlerInit();
+
+        // TODO: Errorhandling in CANHandler
+        // if no data is recived reset etc.
+        // timeOurcnt
+        CanHandlerInit();
     }
 
     void OnUpdate() {
 
-        DrawMenuValue(OBD2_PID_ENGINE_TEMP, 140, 20, "C");
-        DrawMenuValue(OBD2_PID_INTAKE_TEMP, 140, 60, "C");
-        //DrawMenuValue(OBD2_PID_ENGINE_TEMP, 140, 20, "C");
+        DrawMenuValue(OBD2_PID_ENGINE_TEMP, 140,  20, "C");
+        DrawMenuValue(OBD2_PID_INTAKE_TEMP, 140,  60, "C");
+        DrawMenuValue(OBD2_PID_ECU_VOLTAGE, 140, 100, "V");
 
 
         DrawMenuValue(OBD2_PID_DISTANCE_SINCE_CLR, 20, 275, "km");
-        DrawMenuValue(OBD2_PID_ODOMETER, 20, 300, "km");
+        //DrawMenuValue(OBD2_PID_ODOMETER, 20, 300, "km");
+
+        //if (CanHandlerIsConnected()) {
+            m_Display.drawBitmap(220, 300, image_link_bits, 15, 16, ILI9341_GREEN);
+        //}
+
     }
 
 private:
@@ -86,16 +96,14 @@ private:
     }
 
     void DrawMenuValue(uint16_t pid, int16_t x, int16_t y, const char *unit) {
-        if (GetOBD2Data().at(pid).data !=  GetOBD2Data().at(pid).oldData) {
-            m_Display.setCursor(x, y);
-            m_Display.setTextColor(ILI9341_BLACK);  m_Display.setTextSize(2);
-            m_Display.print(GetOBD2Data().at(pid).oldData);
-            m_Display.print(unit);
-        }
+        m_Display.setCursor(x, y);
+        m_Display.setTextColor(ILI9341_BLACK);  m_Display.setTextSize(2);
+        m_Display.printf("%.1f", GetOBD2Data().at(pid).oldData);
+        m_Display.print(unit);
 
         m_Display.setCursor(x, y);
         m_Display.setTextColor(ILI9341_RED);  m_Display.setTextSize(2);
-        m_Display.print(GetOBD2Data().at(pid).data);
+        m_Display.printf("%.1f", GetOBD2Data().at(pid).data);
         m_Display.print(unit);
 
         GetOBD2Data().at(pid).UpdateOldData();

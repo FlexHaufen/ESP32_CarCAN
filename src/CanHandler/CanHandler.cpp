@@ -15,6 +15,7 @@
 
 // *** GLOBAL VARIABLES ***
 Ticker g_TxTimer;       // Tx Timer
+bool g_IsConnected = false;
 
 static std::map<uint16_t, obd2Data_t> g_OBD2Data {
     {OBD2_PID_ENGINE_LOAD,          {0, 0, 0}},
@@ -23,7 +24,8 @@ static std::map<uint16_t, obd2Data_t> g_OBD2Data {
     {OBD2_PID_THROTTLE_POS,         {0, 0, 0}},
     {OBD2_PID_SPEED,                {0, 0, 0}},
     {OBD2_PID_DISTANCE_SINCE_CLR,   {0, 0, 0}},
-    {OBD2_PID_ODOMETER,             {0, 0, 0}},
+    {OBD2_PID_ECU_VOLTAGE,          {0, 0, 0}},
+    //{OBD2_PID_ODOMETER,             {0, 0, 0}},
 };
 
 // *** PROTOTYPES ***
@@ -59,42 +61,34 @@ void HandleTxEvent() {
     auto& pid = it->first;
     auto& data = it->second;
 
-    if (data.txFlag == false) {
-        // Prepare can frame
-        CAN_FRAME txFrame;
-        txFrame.id = OBD2_CAN_TX_ID;
-        txFrame.length = 8;
-        txFrame.data.uint8[0] = 0x02;                   // Number of additional data bytes
-        txFrame.data.uint8[1] = OND2_CAN_TX_SERVICE_01; // Service 01
-        txFrame.data.uint8[2] = pid;                    // PID for information
-        txFrame.data.uint8[3] = 0x00;                   // Padding byte
-        txFrame.data.uint8[4] = 0x00;                   // Padding byte
-        txFrame.data.uint8[5] = 0x00;                   // Padding byte
-        txFrame.data.uint8[6] = 0x00;                   // Padding byte
-        txFrame.data.uint8[7] = 0x00;                   // Padding byte
-        // Send request
-        CAN0.sendFrame(txFrame);
-        
-        // Update flags
-        data.txFlag = true;
-        data.timeOutCnt = 0;
-    }
-    else {
-        data.timeOutCnt++;
-    }
+    // Prepare can frame
+    CAN_FRAME txFrame;
+    txFrame.id = OBD2_CAN_TX_ID;
+    txFrame.length = 8;
+    txFrame.data.uint8[0] = 0x02;                   // Number of additional data bytes
+    txFrame.data.uint8[1] = OND2_CAN_TX_SERVICE_01; // Service 01
+    txFrame.data.uint8[2] = pid;                    // PID for information
+    txFrame.data.uint8[3] = 0x00;                   // Padding byte
+    txFrame.data.uint8[4] = 0x00;                   // Padding byte
+    txFrame.data.uint8[5] = 0x00;                   // Padding byte
+    txFrame.data.uint8[6] = 0x00;                   // Padding byte
+    txFrame.data.uint8[7] = 0x00;                   // Padding byte
+    // Send request
+    CAN0.sendFrame(txFrame);
+    
+    // Update flags
+    data.timeOutCnt++;
 
     // TODO: Error Handling here
     if (data.timeOutCnt >= CAN_MAX_TIMEOUT) {
         Serial.print("ERROR: No answer from PID ");
-        Serial.println(pid);
+        Serial.println(pid, HEX);
     }
 
     it++;
 }
 
 void HandleRxEvent(CAN_FRAME* rxFrame) {
-    Serial.println(rxFrame->id);
-    
     uint16_t pid = rxFrame->data.uint8[2];
 
     // Error if PID received for which request wasn't sent
@@ -105,6 +99,8 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
         return;
     } 
 
+    g_IsConnected = true;
+
     switch (pid) {
         case OBD2_PID_ENGINE_LOAD:
         case OBD2_PID_THROTTLE_POS:
@@ -112,11 +108,15 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
             break;
         case OBD2_PID_ENGINE_TEMP:
         case OBD2_PID_INTAKE_TEMP:
-            g_OBD2Data[pid].data = rxFrame->data.uint8[3] - 40;
+            g_OBD2Data[pid].data = rxFrame->data.uint8[3] - 40.f;
             break;
         case OBD2_PID_DISTANCE_SINCE_CLR:
             g_OBD2Data[pid].data = (255 * rxFrame->data.uint8[3] 
                                         + rxFrame->data.uint8[4]);
+            break;
+        case OBD2_PID_ECU_VOLTAGE:
+            g_OBD2Data[pid].data = (255 * rxFrame->data.uint8[3] 
+                                        + rxFrame->data.uint8[4]) / 1000.f;
             break;
         case OBD2_PID_ODOMETER:
             g_OBD2Data[pid].data = ((rxFrame->data.uint8[3] << 24)
@@ -129,9 +129,11 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
             g_OBD2Data[pid].data = rxFrame->data.uint8[3];
             break;
     }
-    g_OBD2Data[pid].txFlag = false;
+    g_OBD2Data[pid].timeOutCnt = 0;
 }
 
 std::map<uint16_t, obd2Data_t>& GetOBD2Data() {
     return g_OBD2Data;
 }
+
+bool CanHandlerIsConnected() { return g_IsConnected; }
