@@ -13,23 +13,18 @@
 // external
 #include <Arduino.h>
 
-// ** DEFINES ***
+// internal
+#include "CanHandler/CanHandler.h"
 
 
-// *** GLOABL VARIABLES ***
-
-/**
- * @brief Setup
- * 
- */
 void setup() {
-   
+    Serial.begin(115200);
+
+    CanHandlerInit();
 }
 
-/**
- * @brief Loop
- * 
- */
 void loop() {
-
+    
+    PrintData();
+    delay(1000);
 }
