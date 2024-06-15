@@ -14,16 +14,11 @@
 
 
 // *** GLOBAL VARIABLES ***
-Ticker g_TxTimer;
-Ticker g_RxTimer;
+Ticker g_TxTimer;       // Tx Timer
 
 // *** PROTOTYPES ***
-void CanHandlerUpdate();
-
 void HandleTxEvent();
-void HandleRxEvent();
-
-
+void HandleRxEvent(CAN_FRAME* rxFrame);
 
 void CanHandlerInit() {
     // inizialize can
@@ -35,70 +30,88 @@ void CanHandlerInit() {
 
     // Setup Timers
     g_TxTimer.attach_ms(CAN_TIMER_TX_PERIOD, HandleTxEvent);
-    g_RxTimer.attach_ms(CAN_TIMER_RX_PERIOD, HandleRxEvent);
+
+    CAN0.setRXFilter(0, OBD2_CAN_RX_ID_ECU, 0xFFF , false);
+    CAN0.attachCANInterrupt(0, HandleRxEvent);
 }
 
 
 void HandleTxEvent() {
-    for (auto& [pid, data] : g_OBD2Data) {
-        if (data.txFlag == false) {
-            // Prepare can frame
-            CAN_FRAME txFrame;
-            txFrame.id = OBD2_CAN_TX_ID;
-            txFrame.length = 8;
-            txFrame.data.uint8[0] = 0x02;                   // Number of additional data bytes
-            txFrame.data.uint8[1] = OND2_CAN_TX_SERVICE_01; // Service 01
-            txFrame.data.uint8[2] = pid;                    // PID for information
-            txFrame.data.uint8[3] = 0x00;                   // Padding byte
-            txFrame.data.uint8[4] = 0x00;                   // Padding byte
-            txFrame.data.uint8[5] = 0x00;                   // Padding byte
-            txFrame.data.uint8[6] = 0x00;                   // Padding byte
-            txFrame.data.uint8[7] = 0x00;                   // Padding byte
-            // Send request
-            CAN0.sendFrame(txFrame);
-            
-            // Update flags
-            data.txFlag = true;
-            data.timeOutCnt = 0;
-        }
-        else {
-            data.timeOutCnt++;
-        }
 
-        // TODO: Error Handling here
-        if (data.timeOutCnt >= CAN_MAX_TIMEOUT) {
-            Serial.print("ERROR: No awnser from PID ");
-            Serial.println(pid);
-        }
-    }
-}
+    static std::map<uint16_t, obd2Data_t>::iterator it = g_OBD2Data.begin();
 
-void HandleRxEvent() {
-    CAN_FRAME rxFrame;
-    if (!CAN0.read(rxFrame))  {
-        return;
-    }
-    if (rxFrame.id != OBD2_CAN_RX_ID_ECU) {
-        return;
+    if (it == g_OBD2Data.end()) {
+        it = g_OBD2Data.begin();
     }
     
-    int16_t rawValue = rxFrame.data.uint8[3];
+    auto& pid = it->first;
+    auto& data = it->second;
 
-    switch (rxFrame.id) {
-        case OBD2_PID_ENGINE_LOAD:
-        case OBD2_PID_THROTTLE_POS:
-            g_OBD2Data[rxFrame.id].data = (100/255) * rawValue;
-            break;
-        case OBD2_PID_ENGINE_TEMP:
-        case OBD2_PID_INTAKE_TEMP:
-            g_OBD2Data[rxFrame.id].data = rawValue - 40;
-            break;
-        default:
-            g_OBD2Data[rxFrame.id].data = rawValue;
-            break;
+    Serial.print("sending pid: ");
+    Serial.println(pid);
+
+    if (data.txFlag == false) {
+        // Prepare can frame
+        CAN_FRAME txFrame;
+        txFrame.id = OBD2_CAN_TX_ID;
+        txFrame.length = 8;
+        txFrame.data.uint8[0] = 0x02;                   // Number of additional data bytes
+        txFrame.data.uint8[1] = OND2_CAN_TX_SERVICE_01; // Service 01
+        txFrame.data.uint8[2] = pid;                    // PID for information
+        txFrame.data.uint8[3] = 0x00;                   // Padding byte
+        txFrame.data.uint8[4] = 0x00;                   // Padding byte
+        txFrame.data.uint8[5] = 0x00;                   // Padding byte
+        txFrame.data.uint8[6] = 0x00;                   // Padding byte
+        txFrame.data.uint8[7] = 0x00;                   // Padding byte
+        // Send request
+        CAN0.sendFrame(txFrame);
+        
+        // Update flags
+        data.txFlag = true;
+        data.timeOutCnt = 0;
+    }
+    else {
+        data.timeOutCnt++;
     }
 
-    g_OBD2Data[rxFrame.id].txFlag = false;
+    // TODO: Error Handling here
+    if (data.timeOutCnt >= CAN_MAX_TIMEOUT) {
+        Serial.print("ERROR: No awnser from PID ");
+        Serial.println(pid);
+    }
+
+    it++;
+}
+
+void HandleRxEvent(CAN_FRAME* rxFrame) {
+    Serial.print("rx on id: ");
+    Serial.println(rxFrame->id);
+    
+    uint16_t pid = rxFrame->data.uint8[2];
+
+    if (g_OBD2Data.find(pid) == g_OBD2Data.end()) {
+        Serial.print("Pid: ");
+        Serial.print(pid);
+        Serial.print("NotFound");
+        return;
+    } 
+    else {
+        int16_t rawValue = rxFrame->data.uint8[3];
+        switch (pid) {
+            case OBD2_PID_ENGINE_LOAD:
+            case OBD2_PID_THROTTLE_POS:
+                g_OBD2Data[pid].data = rawValue / 2.55f;
+                break;
+            case OBD2_PID_ENGINE_TEMP:
+            case OBD2_PID_INTAKE_TEMP:
+                g_OBD2Data[pid].data = rawValue - 40;
+                break;
+            default:
+                g_OBD2Data[pid].data = rawValue;
+                break;
+        }
+        g_OBD2Data[pid].txFlag = false;
+    }
 }
 
 void PrintData() {

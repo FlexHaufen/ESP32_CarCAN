@@ -22,9 +22,9 @@
 #define CAN_PIN_RX  GPIO_NUM_5      // Rx pin for TJA1051T/3
 #define CAN_PIN_TX  GPIO_NUM_4      // Tx pin for TJA1051T/3
 
-#define CAN_TIMER_TX_PERIOD         200 // [ms]
-#define CAN_TIMER_RX_PERIOD          10 // [ms]
-#define CAN_MAX_TIMEOUT            1000
+// TODO: find out fastest timing
+#define CAN_TIMER_TX_PERIOD      1000 // [ms]
+#define CAN_MAX_TIMEOUT            10
 
 // OBD2-PID's & CAN-ID's according to https://en.wikipedia.org/wiki/OBD-II_PIDs
 #define OBD2_CAN_TX_ID                  0x7DF       // CAN ID for OBD2 Tx
