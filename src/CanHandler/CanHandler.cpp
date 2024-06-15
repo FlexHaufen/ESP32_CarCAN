@@ -36,6 +36,9 @@ void CanHandlerInit() {
 }
 
 
+// TODO: Maby have diffrent tasks with diffrenc cycle times
+//       50ms cycle for importand information
+//       1s cycle for non importand information
 void HandleTxEvent() {
 
     static std::map<uint16_t, obd2Data_t>::iterator it = g_OBD2Data.begin();
