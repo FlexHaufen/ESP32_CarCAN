@@ -9,6 +9,10 @@ Data is requested using the OBD-II standard and displayed on an LCD screen.
 - Adafruit TJA1051T/3
 - Adafruit ILI9341
 
+
+![image](res/Images/setup.jpg)
+
+
 ## Sources 
 - [OBD-II PIDs](https://en.wikipedia.org/wiki/OBD-II_PIDs)
 - [MrDIY - Car's CAN](https://www.youtube.com/watch?v=Se2KCVyD7CM)

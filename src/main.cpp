@@ -14,17 +14,19 @@
 #include <Arduino.h>
 
 // internal
-#include "CanHandler/CanHandler.h"
+#include "DisplayHandler/DisplayHandler.h"
 
+
+DisplayHandler display;
 
 void setup() {
     Serial.begin(115200);
-
-    CanHandlerInit();
+    display.Init();
+    display.ReadDiagnostics();
 }
 
 void loop() {
     
-    PrintData();
-    delay(1000);
+    display.OnUpdate();
+    delay(10);
 }
