@@ -16,12 +16,22 @@
 // *** GLOBAL VARIABLES ***
 Ticker g_TxTimer;       // Tx Timer
 
+static std::map<uint16_t, obd2Data_t> g_OBD2Data {
+    {OBD2_PID_ENGINE_LOAD,          {0, 0, 0}},
+    {OBD2_PID_ENGINE_TEMP,          {0, 0, 0}},
+    {OBD2_PID_INTAKE_TEMP,          {0, 0, 0}},
+    {OBD2_PID_THROTTLE_POS,         {0, 0, 0}},
+    {OBD2_PID_SPEED,                {0, 0, 0}},
+    {OBD2_PID_DISTANCE_SINCE_CLR,   {0, 0, 0}},
+    {OBD2_PID_ODOMETER,             {0, 0, 0}},
+};
+
 // *** PROTOTYPES ***
 void HandleTxEvent();
 void HandleRxEvent(CAN_FRAME* rxFrame);
 
 void CanHandlerInit() {
-    // inizialize can
+    // initialize can
     CAN0.setCANPins(CAN_PIN_RX,CAN_PIN_TX);
     if (!CAN0.begin(500000)) {
         ESP.restart();
@@ -36,11 +46,10 @@ void CanHandlerInit() {
 }
 
 
-// TODO: Maby have diffrent tasks with diffrenc cycle times
-//       50ms cycle for importand information
-//       1s cycle for non importand information
+// TODO: Maybe have different tasks with different cycle times
+//       50ms cycle for important information
+//       1s cycle for non important information
 void HandleTxEvent() {
-
     static std::map<uint16_t, obd2Data_t>::iterator it = g_OBD2Data.begin();
 
     if (it == g_OBD2Data.end()) {
@@ -49,9 +58,6 @@ void HandleTxEvent() {
     
     auto& pid = it->first;
     auto& data = it->second;
-
-    Serial.print("sending pid: ");
-    Serial.println(pid);
 
     if (data.txFlag == false) {
         // Prepare can frame
@@ -79,7 +85,7 @@ void HandleTxEvent() {
 
     // TODO: Error Handling here
     if (data.timeOutCnt >= CAN_MAX_TIMEOUT) {
-        Serial.print("ERROR: No awnser from PID ");
+        Serial.print("ERROR: No answer from PID ");
         Serial.println(pid);
     }
 
@@ -87,47 +93,45 @@ void HandleTxEvent() {
 }
 
 void HandleRxEvent(CAN_FRAME* rxFrame) {
-    Serial.print("rx on id: ");
     Serial.println(rxFrame->id);
     
     uint16_t pid = rxFrame->data.uint8[2];
 
+    // Error if PID received for which request wasn't sent
     if (g_OBD2Data.find(pid) == g_OBD2Data.end()) {
-        Serial.print("Pid: ");
+        Serial.print("ERROR: PID [");
         Serial.print(pid);
-        Serial.print("NotFound");
+        Serial.print("] not found - no request sent for this PID");
         return;
     } 
-    else {
-        int16_t rawValue = rxFrame->data.uint8[3];
-        switch (pid) {
-            case OBD2_PID_ENGINE_LOAD:
-            case OBD2_PID_THROTTLE_POS:
-                g_OBD2Data[pid].data = rawValue / 2.55f;
-                break;
-            case OBD2_PID_ENGINE_TEMP:
-            case OBD2_PID_INTAKE_TEMP:
-                g_OBD2Data[pid].data = rawValue - 40;
-                break;
-            default:
-                g_OBD2Data[pid].data = rawValue;
-                break;
-        }
-        g_OBD2Data[pid].txFlag = false;
+
+    switch (pid) {
+        case OBD2_PID_ENGINE_LOAD:
+        case OBD2_PID_THROTTLE_POS:
+            g_OBD2Data[pid].data = rxFrame->data.uint8[3] / 2.55f;
+            break;
+        case OBD2_PID_ENGINE_TEMP:
+        case OBD2_PID_INTAKE_TEMP:
+            g_OBD2Data[pid].data = rxFrame->data.uint8[3] - 40;
+            break;
+        case OBD2_PID_DISTANCE_SINCE_CLR:
+            g_OBD2Data[pid].data = (255 * rxFrame->data.uint8[3] 
+                                        + rxFrame->data.uint8[4]);
+            break;
+        case OBD2_PID_ODOMETER:
+            g_OBD2Data[pid].data = ((rxFrame->data.uint8[3] << 24)
+                                   +(rxFrame->data.uint8[4] << 16)
+                                   +(rxFrame->data.uint8[5] <<  8)
+                                   +(rxFrame->data.uint8[6] <<  0));
+            break;
+        case OBD2_PID_SPEED:
+        default:
+            g_OBD2Data[pid].data = rxFrame->data.uint8[3];
+            break;
     }
+    g_OBD2Data[pid].txFlag = false;
 }
 
-void PrintData() {
-    Serial.println("Data: ");
-    for (auto& [pid, data] : g_OBD2Data) {
-        Serial.print("[");
-        Serial.print(pid, HEX);
-        Serial.print("]: ");
-        Serial.print(data.data);
-        Serial.print(" - Tx: ");
-        Serial.print(data.txFlag);
-        Serial.print(" - Cnt: ");
-        Serial.println(data.timeOutCnt);
-    
-    }
+std::map<uint16_t, obd2Data_t>& GetOBD2Data() {
+    return g_OBD2Data;
 }
