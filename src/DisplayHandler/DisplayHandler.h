@@ -63,9 +63,6 @@ public:
         DrawMenuPointValue(OBD2_PID_ECU_VOLTAGE, 140, 100, "V");    DrawMenuPointError(OBD2_PID_ECU_VOLTAGE, 200, 100);
 
 
-        DrawMenuPointValue(OBD2_PID_DISTANCE_SINCE_CLR, 20, 275, "km");
-        //DrawMenuPointValue(OBD2_PID_ODOMETER, 20, 300, "km");
-
         //if (CanHandlerIsConnected()) {
             m_Display.drawBitmap(220, 300, image_link_bits, 15, 16, ILI9341_GREEN);
         //}
@@ -88,19 +85,25 @@ private:
     }
 
     void DrawMenuPointValue(uint16_t pid, int16_t x, int16_t y, const char *unit) {
-        // FIXME: Don't refresh every frame
-        m_Display.setCursor(x, y);
-        m_Display.setTextColor(ILI9341_BLACK);  m_Display.setTextSize(2);
-        m_Display.printf("%.1f", CanGetOldData(pid));
-        m_Display.print(unit);
+
+        float data = CanGetData(pid);
+        float oldData = CanGetOldData(pid);
+
+        // Clear only if data changed
+        if (data != oldData) {
+            m_Display.setCursor(x, y);
+            m_Display.setTextColor(ILI9341_BLACK);  m_Display.setTextSize(2);
+            m_Display.printf("%.1f", oldData);
+            m_Display.print(unit);
+        }
 
         m_Display.setCursor(x, y);
         m_Display.setTextColor(ILI9341_RED);  m_Display.setTextSize(2);
-        m_Display.printf("%.1f", CanGetData(pid));
+        m_Display.printf("%.1f", data);
         m_Display.print(unit);
 
-
-        CanUpdateOldData(pid);
+        // Update Data
+        CanSetOldData(pid, data);
     }
 
     void DrawMenuPointError(uint16_t pid, int16_t x, int16_t y) {

@@ -23,8 +23,8 @@
 #define CAN_PIN_TX  GPIO_NUM_4      // Tx pin for TJA1051T/3
 
 // TODO: find out fastest timing
-#define CAN_TIMER_TX_PERIOD      1000 // [ms]
-#define CAN_MAX_TIMEOUT             1
+#define CAN_TIMER_TX_PERIOD       500 // [ms]
+#define CAN_MAX_TIMEOUT             5
 
 // OBD2-PID's & CAN-ID's according to https://en.wikipedia.org/wiki/OBD-II_PIDs
 #define OBD2_CAN_TX_ID                  0x7DF       // CAN ID for OBD2 Tx
@@ -40,8 +40,9 @@
 #define OBD2_PID_THROTTLE_POS           0x11        // (100/255)A                       [%]
 #define OBD2_PID_SPEED                  0x0D        // A                                [km/h]
 #define OBD2_PID_DISTANCE_SINCE_CLR     0x31        // (256A + B)                       [km]
-#define OBD2_PID_ECU_VOLTAGE            0x42        // (256A + B) / 1000
-#define OBD2_PID_ODOMETER               0xA6        // (A(2^24)+B(2^16)+C(2^8)+D)/10    [km]
+#define OBD2_PID_ECU_VOLTAGE            0x42        // (256A + B) / 1000                [V]
+//#define OBD2_PID_OIL_TEMP               0x5C        // A - 40                           [°C]
+//#define OBD2_PID_ODOMETER               0xA6        // (A(2^24)+B(2^16)+C(2^8)+D)/10    [km]
 
 // *** GLOBAL VARIABLES ***
 
@@ -68,6 +69,6 @@ float CanGetData(uint16_t pid);
 
 float CanGetOldData(uint16_t pid);
 
-void CanUpdateOldData(uint16_t pid);
+void CanSetOldData(uint16_t pid, float data);
 
 bool CanHasNoRxError(uint16_t pid);

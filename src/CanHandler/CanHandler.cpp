@@ -25,9 +25,8 @@ static std::map<uint16_t, obd2Data_t> g_OBD2Data {
     {OBD2_PID_INTAKE_TEMP,          {0, 0, 0}},
     {OBD2_PID_THROTTLE_POS,         {0, 0, 0}},
     {OBD2_PID_SPEED,                {0, 0, 0}},
-    {OBD2_PID_DISTANCE_SINCE_CLR,   {0, 0, 0}},
+    //{OBD2_PID_DISTANCE_SINCE_CLR,   {0, 0, 0}},
     {OBD2_PID_ECU_VOLTAGE,          {0, 0, 0}},
-    //{OBD2_PID_ODOMETER,             {0, 0, 0}},
 };
 
 // *** PROTOTYPES ***
@@ -48,7 +47,7 @@ void CanHandlerInit() {
     // Setup Timers
     g_TxTimer.attach_ms(CAN_TIMER_TX_PERIOD, HandleTxEvent);
 
-    CAN0.setRXFilter(0, OBD2_CAN_RX_ID_ECU, 0xFFF , false);
+    CAN0.setRXFilter(0, OBD2_CAN_RX_ID_ECU, 0xFFE , false);
     CAN0.attachCANInterrupt(0, HandleRxEvent);
 }
 
@@ -114,12 +113,12 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
             g_OBD2Data[pid].data = rxFrame->data.uint8[3] - 40.f;
             break;
         case OBD2_PID_DISTANCE_SINCE_CLR:
-            g_OBD2Data[pid].data = (255 * rxFrame->data.uint8[3] 
-                                        + rxFrame->data.uint8[4]);
+            g_OBD2Data[pid].data = (255.f * rxFrame->data.uint8[3] 
+                                          + rxFrame->data.uint8[4]);
             break;
         case OBD2_PID_ECU_VOLTAGE:
-            g_OBD2Data[pid].data = (255 * rxFrame->data.uint8[3] 
-                                        + rxFrame->data.uint8[4]) / 1000.f;
+            g_OBD2Data[pid].data = (255.f * rxFrame->data.uint8[3] 
+                                          + rxFrame->data.uint8[4]) / 1000.f;
             break;
         case OBD2_PID_ODOMETER:
             g_OBD2Data[pid].data = ((rxFrame->data.uint8[3] << 24)
@@ -156,9 +155,9 @@ float CanGetOldData(uint16_t pid) {
     }
 }
 
-void CanUpdateOldData(uint16_t pid) {
+void CanSetOldData(uint16_t pid, float data) {
     try {
-        g_OBD2Data.at(pid).oldData = g_OBD2Data.at(pid).data;
+        g_OBD2Data.at(pid).oldData = data;
     }
     catch (const std::out_of_range& e) {
         LOG_ERROR("PID [0x%03X] does not exist - returning");
