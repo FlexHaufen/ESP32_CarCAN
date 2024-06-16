@@ -14,15 +14,16 @@
 #include <Arduino.h>
 
 // internal
+#include "log.h"
 #include "DisplayHandler/DisplayHandler.h"
 
 
 DisplayHandler display;
 
 void setup() {
-    Serial.begin(115200);
+ 
+    LogInit();
     display.Init();
-    display.ReadDiagnostics();
 }
 
 void loop() {

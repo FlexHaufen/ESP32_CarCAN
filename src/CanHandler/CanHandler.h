@@ -24,7 +24,7 @@
 
 // TODO: find out fastest timing
 #define CAN_TIMER_TX_PERIOD      1000 // [ms]
-#define CAN_MAX_TIMEOUT            10
+#define CAN_MAX_TIMEOUT             1
 
 // OBD2-PID's & CAN-ID's according to https://en.wikipedia.org/wiki/OBD-II_PIDs
 #define OBD2_CAN_TX_ID                  0x7DF       // CAN ID for OBD2 Tx
@@ -45,14 +45,17 @@
 
 // *** GLOBAL VARIABLES ***
 
-
+/**
+ * @brief OBD2 Data block
+ * 
+ */
 typedef struct {
     float data;             // OBD2 Data
     float oldData;          // OBD2 old Data
-    uint8_t timeOutCnt;     // TimeOut cnt
-    void UpdateOldData() { oldData = data; }
-} obd2Data_t;
 
+    uint8_t timeOutCnt;         // TimeOut cnt
+    bool hasNoRxError;         // 1: if no rxError   
+} obd2Data_t;
 
 /**
  * @brief CanHandler for ESP32
@@ -61,18 +64,10 @@ typedef struct {
  */
 void CanHandlerInit();
 
-/**
- * @brief Prints all the data in g_OBD2Data
- * 
- */
-void PrintData();
+float CanGetData(uint16_t pid);
 
-/**
- * @brief Gets current obd2Data
- * 
- * @return std::map<uint16_t, obd2Data_t>& 
- */
-std::map<uint16_t, obd2Data_t>& GetOBD2Data();
+float CanGetOldData(uint16_t pid);
 
+void CanUpdateOldData(uint16_t pid);
 
-bool CanHandlerIsConnected();
+bool CanHasNoRxError(uint16_t pid);

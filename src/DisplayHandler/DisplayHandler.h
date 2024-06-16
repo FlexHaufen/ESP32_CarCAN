@@ -18,6 +18,7 @@
 #include <Adafruit_ILI9341.h>
 
 // internal
+#include "log.h"
 #include "CanHandler/CanHandler.h"
 #include "bitMaps.h"
 
@@ -40,24 +41,15 @@ class DisplayHandler {
 public:
 
     DisplayHandler()
-    : m_Display(Adafruit_ILI9341(SPI_CS, SPI_DC, SPI_MOSI, SPI_SCK, SPI_RST, SPI_MISO)) {
-    }
+    : m_Display(Adafruit_ILI9341(SPI_CS, SPI_DC, SPI_MOSI, SPI_SCK, SPI_RST, SPI_MISO)) {}
 
-    void ReadDiagnostics() {
-        // read diagnostics (optional but can help debug problems)
-        Serial.println("ILI9341 Debug Indormation"); 
-        Serial.print(" - Display Power Mode: 0x"); Serial.println( m_Display.readcommand8(ILI9341_RDMODE), HEX);
-        Serial.print(" - MADCTL Mode: 0x"); Serial.println(m_Display.readcommand8(ILI9341_RDMADCTL), HEX);
-        Serial.print(" - Pixel Format: 0x"); Serial.println(m_Display.readcommand8(ILI9341_RDPIXFMT), HEX);
-        Serial.print(" - Image Format: 0x"); Serial.println(m_Display.readcommand8(ILI9341_RDIMGFMT), HEX);
-        Serial.print(" - Self Diagnostic: 0x"); Serial.println(m_Display.readcommand8(ILI9341_RDSELFDIAG), HEX); 
-    }
 
     void Init() {
+        LOG_INFO("Initializing display");
+
         m_Display.begin();
 
         DrawBackground();
-
         // TODO: Errorhandling in CANHandler
         // if no data is recived reset etc.
         // timeOurcnt
@@ -66,13 +58,13 @@ public:
 
     void OnUpdate() {
 
-        DrawMenuValue(OBD2_PID_ENGINE_TEMP, 140,  20, "C");
-        DrawMenuValue(OBD2_PID_INTAKE_TEMP, 140,  60, "C");
-        DrawMenuValue(OBD2_PID_ECU_VOLTAGE, 140, 100, "V");
+        DrawMenuPointValue(OBD2_PID_ENGINE_TEMP, 140,  20, "C");    DrawMenuPointError(OBD2_PID_ENGINE_TEMP, 200,  20);
+        DrawMenuPointValue(OBD2_PID_INTAKE_TEMP, 140,  60, "C");    DrawMenuPointError(OBD2_PID_INTAKE_TEMP, 200,  60);
+        DrawMenuPointValue(OBD2_PID_ECU_VOLTAGE, 140, 100, "V");    DrawMenuPointError(OBD2_PID_ECU_VOLTAGE, 200, 100);
 
 
-        DrawMenuValue(OBD2_PID_DISTANCE_SINCE_CLR, 20, 275, "km");
-        //DrawMenuValue(OBD2_PID_ODOMETER, 20, 300, "km");
+        DrawMenuPointValue(OBD2_PID_DISTANCE_SINCE_CLR, 20, 275, "km");
+        //DrawMenuPointValue(OBD2_PID_ODOMETER, 20, 300, "km");
 
         //if (CanHandlerIsConnected()) {
             m_Display.drawBitmap(220, 300, image_link_bits, 15, 16, ILI9341_GREEN);
@@ -95,18 +87,29 @@ private:
         m_Display.print(str);
     }
 
-    void DrawMenuValue(uint16_t pid, int16_t x, int16_t y, const char *unit) {
+    void DrawMenuPointValue(uint16_t pid, int16_t x, int16_t y, const char *unit) {
+        // FIXME: Don't refresh every frame
         m_Display.setCursor(x, y);
         m_Display.setTextColor(ILI9341_BLACK);  m_Display.setTextSize(2);
-        m_Display.printf("%.1f", GetOBD2Data().at(pid).oldData);
+        m_Display.printf("%.1f", CanGetOldData(pid));
         m_Display.print(unit);
 
         m_Display.setCursor(x, y);
         m_Display.setTextColor(ILI9341_RED);  m_Display.setTextSize(2);
-        m_Display.printf("%.1f", GetOBD2Data().at(pid).data);
+        m_Display.printf("%.1f", CanGetData(pid));
         m_Display.print(unit);
 
-        GetOBD2Data().at(pid).UpdateOldData();
+
+        CanUpdateOldData(pid);
+    }
+
+    void DrawMenuPointError(uint16_t pid, int16_t x, int16_t y) {
+        if (CanHasNoRxError(pid)) {
+            m_Display.drawBitmap(x, y, image_crossed_bits, 11, 16, ILI9341_RED);
+        }
+        else {
+            m_Display.drawBitmap(x, y, image_crossed_bits, 11, 16, ILI9341_BLACK);
+        }
     }
 
 private:

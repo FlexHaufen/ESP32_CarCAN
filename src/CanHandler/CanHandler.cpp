@@ -10,7 +10,9 @@
  */
 
 // *** INCLUDES ***
-#include "CanHandler.h"
+#include "CanHandler/CanHandler.h"
+
+#include "log.h"
 
 
 // *** GLOBAL VARIABLES ***
@@ -34,6 +36,9 @@ void HandleRxEvent(CAN_FRAME* rxFrame);
 
 void CanHandlerInit() {
     // initialize can
+
+    LOG_INFO("Initializing CAN");
+
     CAN0.setCANPins(CAN_PIN_RX,CAN_PIN_TX);
     if (!CAN0.begin(500000)) {
         ESP.restart();
@@ -81,8 +86,8 @@ void HandleTxEvent() {
 
     // TODO: Error Handling here
     if (data.timeOutCnt >= CAN_MAX_TIMEOUT) {
-        Serial.print("ERROR: No answer from PID ");
-        Serial.println(pid, HEX);
+        data.hasNoRxError = true;
+        LOG_ERROR("No answer from PID [0x%03X]", pid);
     }
 
     it++;
@@ -93,9 +98,7 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
 
     // Error if PID received for which request wasn't sent
     if (g_OBD2Data.find(pid) == g_OBD2Data.end()) {
-        Serial.print("ERROR: PID [");
-        Serial.print(pid);
-        Serial.print("] not found - no request sent for this PID");
+        LOG_ERROR("Awnser from PID [0x%03X], but no request was sent");
         return;
     } 
 
@@ -130,10 +133,45 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
             break;
     }
     g_OBD2Data[pid].timeOutCnt = 0;
+    g_OBD2Data[pid].hasNoRxError = false;
 }
 
-std::map<uint16_t, obd2Data_t>& GetOBD2Data() {
-    return g_OBD2Data;
+float CanGetData(uint16_t pid) {
+    try {
+        return g_OBD2Data.at(pid).data;
+    }
+    catch (const std::out_of_range& e) {
+        LOG_ERROR("PID [0x%03X] does not exist - returning 0");
+        return 0;
+    }
 }
 
-bool CanHandlerIsConnected() { return g_IsConnected; }
+float CanGetOldData(uint16_t pid) {
+    try {
+        return g_OBD2Data.at(pid).oldData;
+    }
+    catch (const std::out_of_range& e) {
+        LOG_ERROR("PID [0x%03X] does not exist - returning 0");
+        return 0;
+    }
+}
+
+void CanUpdateOldData(uint16_t pid) {
+    try {
+        g_OBD2Data.at(pid).oldData = g_OBD2Data.at(pid).data;
+    }
+    catch (const std::out_of_range& e) {
+        LOG_ERROR("PID [0x%03X] does not exist - returning");
+        return;
+    }
+}
+
+bool CanHasNoRxError(uint16_t pid) {
+    try {
+        return g_OBD2Data.at(pid).hasNoRxError;
+    }
+    catch (const std::out_of_range& e) {
+        LOG_ERROR("PID [0x%03X] does not exist - returning 0");
+        return 0;
+    }
+}
