@@ -120,12 +120,12 @@ void HandleRxEvent(CAN_FRAME* rxFrame) {
             g_OBD2Data[pid].data = (255.f * rxFrame->data.uint8[3] 
                                           + rxFrame->data.uint8[4]) / 1000.f;
             break;
-        case OBD2_PID_ODOMETER:
-            g_OBD2Data[pid].data = ((rxFrame->data.uint8[3] << 24)
-                                   +(rxFrame->data.uint8[4] << 16)
-                                   +(rxFrame->data.uint8[5] <<  8)
-                                   +(rxFrame->data.uint8[6] <<  0));
-            break;
+        //case OBD2_PID_ODOMETER:
+        //    g_OBD2Data[pid].data = ((rxFrame->data.uint8[3] << 24)
+        //                           +(rxFrame->data.uint8[4] << 16)
+        //                           +(rxFrame->data.uint8[5] <<  8)
+        //                           +(rxFrame->data.uint8[6] <<  0));
+        //    break;
         case OBD2_PID_SPEED:
         default:
             g_OBD2Data[pid].data = rxFrame->data.uint8[3];
