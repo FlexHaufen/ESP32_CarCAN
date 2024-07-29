@@ -20,7 +20,7 @@
 
 // ** DEFINES ***
 // SPI - Using Hardware SPI on ESP32
-#define SPI_CLK_FREQ        10000000U
+#define SPI_CLK_FREQ        40000000U
 // #define SPI_MOSI     23
 // #define SPI_MISO     19
 // #define SPI_SCK      18

@@ -31,12 +31,11 @@ void DisplayHandler::Init() {
     m_tft.begin(SPI_CLK_FREQ);
     m_tft.fillScreen(ILI9341_BLACK);
 
-    if (!SD.begin(SPI_SD_CS)) {
+    if (!SD.begin(SPI_SD_CS, SPI, SPI_CLK_FREQ)) {
         LOG_ERROR("SD-Card mount failed!");
         return;
     } 
 
-    // FIXME: try other sd-card / or other spi speed
     drawBMP("/logo_animation30.bmp", 0, 0);
 
     //DrawBackground();
@@ -152,9 +151,8 @@ void DisplayHandler::drawBMP(const char *filename, int16_t x, int16_t y) {
         bmpFS.close();
         return;
     }
-    // Iterate over each row
+
     for (uint16_t row = 0; row < h; row++) {
-        // Read the row of pixels
         for (uint16_t col = 0; col < w; col++) {
             b = bmpFS.read();
             g = bmpFS.read();
