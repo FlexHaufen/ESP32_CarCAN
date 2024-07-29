@@ -12,7 +12,7 @@
 // *** INCLUDES ***
 #include "CanHandler/CanHandler.h"
 
-#include "log.h"
+#include "Helper/log.h"
 
 
 // *** GLOBAL VARIABLES ***
