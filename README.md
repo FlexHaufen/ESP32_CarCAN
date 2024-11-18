@@ -4,6 +4,10 @@ ESP32 CAN-Bus Sniffer for Car Data Display on an LCD Screen
 The ESP32 communicates with the car via the Adafruit CAN-Bus transceiver.  
 Data is requested using the OBD-II standard and displayed on an LCD screen.
 
+> [!IMPORTANT]  
+> The code is "work in progress", therefore it's pretty ugly.
+
+
 ## Hardware
 - ESP32 NODEMCU-32S
 - Adafruit TJA1051T/3
